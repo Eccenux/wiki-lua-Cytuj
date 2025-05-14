@@ -1,3 +1,8 @@
+local p = {}
+local priv = {} -- private functions scope
+-- expose private for easy testing/debugging
+p.__priv = priv
+
 local resources = mw.loadData("Moduł:Cytuj/dane")
 local access = mw.loadData("Moduł:Cytuj/dostęp")
 
@@ -1737,16 +1742,16 @@ local function Cite(p, mode, appendText, firewall)
 	local problems = {}
 	if not customMode and (mode == 1) then
 		builder:wikitext(categories.undetermined)
-		table.insert(problems, "???")
+		table.insert(problems, "typ? :: może za dużo pól, bo nie udało się zidentyfikować typu cytowanego źródła") -- ???
 	end
 	if data.publisher and data.published then
-		table.insert(problems, "p?")
+		table.insert(problems, "pub. albo wyd. :: podano jednocześnie „opublikowany” (jak dla www) oraz „wydawca” (jak dla książek)") -- p?
 		if addCategories then
 			table.insert(problems, categories.unusedPublished)
 		end
 	end
 	if data.journal and data.published and (data.journal == data.published) then
-		table.insert(problems, "j?")
+		table.insert(problems, "czasop. = opub. :: pole „czasopismo” jest identyczne jak pole „opublikowany”, podaj jedno") -- j?
 		if addCategories then
 			table.insert(problems, categories.sameJournalAndPublished)
 		end
@@ -1784,13 +1789,13 @@ local function Cite(p, mode, appendText, firewall)
 	or (data.author and (data.author.comma == true))
 	or (data.editor and data.editor.comma)
 	or (data.others and data.others.comma) then
-		table.insert(problems, "!!!")
+		table.insert(problems, "błąd autorów! :: błędy rozdzielania osób w jednym z pól") -- !!!
 		if addCategories then
 			builder:wikitext(categories.suspectedComma)
 		end
 	end
 	if data.author and (data.author.comma == "alt") then
-		table.insert(problems, "a?")
+		table.insert(problems, "autor ok? :: użyto alternatywny format pola autora na podstawie PMID") -- a?
 		if addCategories then
 			builder:wikitext(categories.altAuthor)
 		end
@@ -1817,41 +1822,41 @@ local function Cite(p, mode, appendText, firewall)
 		end
 
 		if not justification then
-			table.insert(problems, "wiki?")
+			table.insert(problems, "wiki? :: Wikipedia nie może być źródłem dla siebie")
 			if addCategories then
 				builder:wikitext(categories.wiki)
 			end
 		end
 	end
 	if data.unknownAccess then
-		table.insert(problems, "dostęp?")
+		table.insert(problems, "dostęp? :: nieznana wartość pola dostęp")
 		if addCategories then
 			builder:wikitext(categories.unknownAccess)
 		end
 	end
 	if data.rejectedurl then
-		table.insert(problems, "<s>url</s>")
+		table.insert(problems, "<s>url</s>-auto :: url został zignorowany, jako zbędny auto-link (np. wynika z doi)") -- <s>url</s>
 		if addCategories then
 			builder:wikitext(categories.rejectedUrl)
 		end
 	end
 	if data.urlWarning then
-		table.insert(problems, "Url")
+		table.insert(problems, "<s>url</s>-dupl. :: url został zignorowany, ponieważ tytuł już zawierał link") -- Url
 		if addCategories then
 			builder:wikitext(categories.unusedUrl)
 		end
 	end
 	if data.patchCitoidDate then
-		table.insert(problems, "1 stycznia")
+		table.insert(problems, "1 stycznia :: sprawdź: wpisano „1 stycznia”, ale być może chodziło tylko o podanie roku")
 	end
 	if data.badDate then
-		table.insert(problems, "data?")
+		table.insert(problems, "data? :: nieprawidłowa lub nierozpoznana data publikacji")
 	end
 	if data.badAccessDate then
-		table.insert(problems, "data dostępu?")
+		table.insert(problems, "data dostępu? :: nieprawidłowa lub nierozpoznana data dostępu (zalecane: rrrr-mm-dd)")
 	end
 	if data.badArchivedDate then
-		table.insert(problems, "zarchiwizowano?")
+		table.insert(problems, "zarchiwizowano? :: nieprawidłowa lub nierozpoznana data archiwizacji")
 	end
 	if addCategories and (data.badDate or data.badAccessDate or data.badArchiveDate) then
 		builder:wikitext(categories.badDate)
@@ -1860,7 +1865,7 @@ local function Cite(p, mode, appendText, firewall)
 	or (data.chapterauthor and data.chapterauthor.etal)
 	or (data.editor and data.editor.etal)
 	or (data.others and data.others.etal) then
-		table.insert(problems, "i inni")
+		table.insert(problems, "unikaj <i>i inni</i> :: unikaj podawania „i inni” w autorach, lepiej podać wszystkich")
 		if addCategories then
 			builder:wikitext(categories.etal)
 		end
@@ -1904,19 +1909,48 @@ local function Cite(p, mode, appendText, firewall)
 			:addClass("problemy-w-cytuj")
 			:attr("aria-hidden", "true")
 			:attr("data-nosnippet", "")
-		info:wikitext(table.concat(problems,", "))
+		info:wikitext(priv.formatProblems(problems))
 	end
 	
 	return builder:done()
 end
 
-return {
-	
-auto = function(frame)
-	return Cite(frame:getParent(), nil, nil, mw.loadData("Moduł:Cytuj/firewall"))
-end,
+-- Tworzy wikitext ze spanów na podstawie listy problemów
+function priv.cssClassSafe(str)
+	return (str:gsub(".", function(c)
+		if c:match("^[a-z0-9]$") then
+			return c
+		else
+			return "-"
+		end
+	end))
+end
+function priv.formatProblems(problems)
+	local result = {}
 
-custom = function(frame)
+	for _, problem in ipairs(problems) do
+		local info, desc = problem:match("^(.-)%s*::%s*(.+)$")
+		if info and desc then
+			local className = "c-prb-" .. priv.cssClassSafe(info):gsub("%-%-+", "-"):gsub("^%-+", ""):gsub("%-+$", "")
+			--table.insert(result, string.format('<span title="%s" class="%s">%s</span>', desc, className, info))
+			local span = mw.html.create("span")
+				:attr("title", desc)
+				:addClass(className)
+				:wikitext(info)
+			table.insert(result, tostring(span))
+		else
+			table.insert(result, problem)
+		end
+	end
+
+	return table.concat(result, ", ")
+end
+
+function p.auto(frame)
+	return Cite(frame:getParent(), nil, nil, mw.loadData("Moduł:Cytuj/firewall"))
+end
+
+function p.custom(frame)
 	local traceCategory = false
 	local pagename = mw.title.getCurrentTitle()
 	if (pagename.namespace == 10) and frame.getParent then
@@ -1939,6 +1973,6 @@ custom = function(frame)
 	end
 
 	return Cite(frame, mode, traceCategory, null)
-end,
+end
 
-}
+return p

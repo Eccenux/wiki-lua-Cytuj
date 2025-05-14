@@ -46,11 +46,11 @@ return {
 			cat = "fryderykfestiwal.pl",
 		},
 		["commons"] = {
-			info = "link zewnętrzny do commons",
+			info = "link zewnętrzny do Commons",
 			cat = "commons",
 		},
 		["plik"] = {
-			info = "plik z commons jako źródło",
+			info = "plik z Commons jako źródło",
 			cat = "plik z commons",
 		},
 	}	
