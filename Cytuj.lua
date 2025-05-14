@@ -1795,7 +1795,7 @@ local function Cite(p, mode, appendText, firewall)
 		end
 	end
 	if data.author and (data.author.comma == "alt") then
-		table.insert(problems, "autor ok? :: użyto alternatywny format pola autora na podstawie PMID") -- a?
+		table.insert(problems, "autor ok? :: użyto alternatywnego formatu pola autora na podstawie PMID") -- a?
 		if addCategories then
 			builder:wikitext(categories.altAuthor)
 		end
@@ -1829,19 +1829,19 @@ local function Cite(p, mode, appendText, firewall)
 		end
 	end
 	if data.unknownAccess then
-		table.insert(problems, "dostęp? :: nieznana wartość pola dostęp")
+		table.insert(problems, "dostęp? :: nieznana wartość pola „dostęp”")
 		if addCategories then
 			builder:wikitext(categories.unknownAccess)
 		end
 	end
 	if data.rejectedurl then
-		table.insert(problems, "<s>url</s>-auto :: url został zignorowany, jako zbędny auto-link (np. wynika z doi)") -- <s>url</s>
+		table.insert(problems, "<s>url</s>-auto :: „url” został zignorowany jako zbędny auto-link (np. wynika z doi)") -- <s>url</s>
 		if addCategories then
 			builder:wikitext(categories.rejectedUrl)
 		end
 	end
 	if data.urlWarning then
-		table.insert(problems, "<s>url</s>-dupl. :: url został zignorowany, ponieważ tytuł już zawierał link") -- Url
+		table.insert(problems, "<s>url</s>-dupl. :: „url” został zignorowany, ponieważ tytuł już zawiera link") -- Url
 		if addCategories then
 			builder:wikitext(categories.unusedUrl)
 		end
